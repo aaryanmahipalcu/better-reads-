@@ -2,28 +2,105 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push('/profile')
+      }
+    }
+    checkUser()
+  }, [router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle authentication logic here
-    console.log("Form submitted:", formData)
+    setLoading(true)
+    setError(null)
+
+    try {
+      if (isLogin) {
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          router.push('/profile')
+        }
+      } else {
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.name,
+            }
+          }
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          // Show success message
+          setError('✅ Account created! Please check your email to verify your account.')
+          setTimeout(() => {
+            setIsLogin(true)
+            setError(null)
+          }, 3000)
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+
+      if (error) throw error
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed')
+      setLoading(false)
+    }
   }
 
   return (
@@ -45,6 +122,16 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {error && (
+                <div className={`mb-4 p-3 rounded text-sm ${
+                  error.includes('✅') 
+                    ? 'bg-green-900/20 border border-green-700 text-green-300' 
+                    : 'bg-red-900/20 border border-red-700 text-red-300'
+                }`}>
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
                   <div className="space-y-2">
@@ -59,6 +146,7 @@ export default function LoginPage() {
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="pl-10 bg-[#1a1a1a] border-gray-600 text-white"
                         required={!isLogin}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -76,6 +164,7 @@ export default function LoginPage() {
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="pl-10 bg-[#1a1a1a] border-gray-600 text-white"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -92,6 +181,7 @@ export default function LoginPage() {
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className="pl-10 pr-10 bg-[#1a1a1a] border-gray-600 text-white"
                       required
+                      disabled={loading}
                     />
                     <Button
                       type="button"
@@ -99,6 +189,7 @@ export default function LoginPage() {
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={loading}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4 text-gray-400" />
@@ -109,9 +200,22 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full bg-[#ffa94d] hover:bg-[#ff9a33] text-black font-semibold">
-                  {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button 
+                  type="submit" 
+                  className="w-full bg-[#ffa94d] hover:bg-[#ff9a33] text-black font-semibold disabled:opacity-50"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isLogin ? "Signing In..." : "Creating Account..."}
+                    </>
+                  ) : (
+                    <>
+                      {isLogin ? "Sign In" : "Create Account"}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
 
                 <div className="relative">
@@ -127,6 +231,8 @@ export default function LoginPage() {
                   type="button"
                   variant="outline"
                   className="w-full border-gray-600 hover:bg-gray-700 text-white bg-transparent"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path
@@ -156,7 +262,11 @@ export default function LoginPage() {
                   <Button
                     variant="link"
                     className="p-0 ml-1 text-[#ffa94d] hover:text-[#ff9a33]"
-                    onClick={() => setIsLogin(!isLogin)}
+                    onClick={() => {
+                      setIsLogin(!isLogin)
+                      setError(null)
+                    }}
+                    disabled={loading}
                   >
                     {isLogin ? "Sign up" : "Sign in"}
                   </Button>

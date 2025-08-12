@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Edit2, Save, X, BookOpen, Heart, Target, Calendar, Upload, Download, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useAuth } from "@/components/auth-context"
+import { useRouter } from "next/navigation"
 
 interface UserProfile {
   name: string
@@ -37,6 +39,8 @@ const mockStats = {
 }
 
 export default function ProfilePage() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile>(mockProfile)
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState<UserProfile>(mockProfile)
@@ -44,6 +48,30 @@ export default function ProfilePage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [importedBooks, setImportedBooks] = useState(0)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#ede7d9] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a4638] mx-auto mb-4"></div>
+          <p className="text-[#5a4638]">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!user) {
+    return null
+  }
 
   const handleSave = () => {
     setProfile(editedProfile)

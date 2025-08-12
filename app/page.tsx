@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Slider } from "@/components/ui/slider"
 import Link from "next/link"
+import { useAuth } from "@/components/auth-context"
+import { useRouter } from "next/navigation"
 
 interface Book {
   id: string
@@ -179,6 +181,8 @@ const fetchGoogleBooksData = async (isbn: string): Promise<GoogleBookData | null
 }
 
 export default function HomePage() {
+  const { user, signOut } = useAuth()
+  const router = useRouter()
   const [books, setBooks] = useState<Book[]>(sampleBooks)
   const [bookshelves, setBookshelves] = useState<Bookshelf[]>(defaultShelves)
   const [activeShelf, setActiveShelf] = useState("1")
@@ -575,6 +579,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#ede7d9] text-[#333333] font-sans flex">
+
+      
       {/* Collapsible Sidebar */}
       <motion.div
         className="relative bg-[#c9b79c] border-r border-[#5a4638]/20 flex flex-col z-10 shadow-lg"
@@ -736,24 +742,40 @@ export default function HomePage() {
                 transition={{ duration: 0.3 }}
                 className="space-y-2"
               >
-                <Link href="/profile">
+                {user ? (
+                  <Link href="/profile">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-[#5a4638] hover:text-[#ede7d9] hover:bg-[#5a4638]"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Profile
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/login">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-[#5a4638] hover:text-[#ede7d9] hover:bg-[#5a4638]"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
+                {user && (
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-[#5a4638] hover:text-[#ede7d9] hover:bg-[#5a4638]"
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Profile
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-[#5a4638] hover:text-[#ede7d9] hover:bg-[#5a4638]"
+                    onClick={async () => {
+                      await signOut()
+                      router.push('/login')
+                    }}
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
                   </Button>
-                </Link>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

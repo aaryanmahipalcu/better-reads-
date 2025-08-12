@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Literata } from 'next/font/google'
 import "./globals.css"
+import { AuthProvider } from "@/components/auth-context"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,7 +28,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${literata.variable} antialiased`}>{children}</body>
+      <body className={`${inter.variable} ${literata.variable} antialiased`}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   )
 }
